@@ -1415,16 +1415,28 @@ searchInput.addEventListener("click", (e) => {
 });
 
 const searchButton = document.getElementById("searchButton");
+function updateSearchButtonVisibility() {
+  if (!searchButton) return;
+  searchButton.style.display = window.innerWidth <= 767 ? 'block' : 'none';
+}
+
 if (searchButton) {
   searchButton.addEventListener('click', (e) => {
     e.preventDefault();
+    clearTimeout(searchTimeout);
     searchData();
   });
 }
 
+window.addEventListener('resize', updateSearchButtonVisibility);
+updateSearchButtonVisibility();
+
 const districtFilter = document.getElementById('districtFilter');
 if (districtFilter) {
-  districtFilter.addEventListener('change', searchData);
+  districtFilter.addEventListener('change', () => {
+    clearTimeout(searchTimeout);
+    searchData();
+  });
 }
 
 // --- INITIAL LOAD ---
