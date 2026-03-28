@@ -478,7 +478,9 @@ function renderOnboardingForm() {
 
   container.appendChild(fieldsWrapper);
 
-  document.getElementById('modalPrevBtn').disabled = onboardingStep === 0;
+  const prevBtn = document.getElementById('modalPrevBtn');
+  prevBtn.disabled = onboardingStep === 0;
+  prevBtn.style.display = onboardingStep === 0 ? 'none' : 'inline-flex';
   const nextBtn = document.getElementById('modalNextBtn');
   nextBtn.innerText = onboardingStep === onboardingSteps.length - 1 ? 'Submit' : 'Next';
 
