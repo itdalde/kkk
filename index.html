@@ -848,6 +848,12 @@ function searchData() {
   }
 
   if (!keyword && !district) {
+    if (window.innerWidth <= 767) {
+      dataCache = [fullDataCache[0]]; // keep headers only
+      currentPage = 0;
+      renderPaginatedTable();
+      return;
+    }
     dataCache = fullDataCache.slice();
     currentPage = 0;
     renderPaginatedTable();
