@@ -5,31 +5,115 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Katipunang Kabataan Profiling</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg: #eff2f8;
+      --surface: #ffffff;
+      --surface2: #f5f8fd;
+      --text: #1f2a37;
+      --muted: #5e6f89;
+      --border: #dce3ef;
+      --accent: #3f6dff;
+      --accent-soft: #e7eeff;
+      --danger: #dc3545;
+      --success: #198754;
+    }
+    .dark {
+      --bg: #0f172a;
+      --surface: #111827;
+      --surface2: #1f2937;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --border: #334155;
+      --accent: #3b82f6;
+      --accent-soft: #1e3a8a;
+      --danger: #f87171;
+      --success: #34d399;
+    }
+
+    body { background: var(--bg); color: var(--text); }
+    .card, .table-card { background: var(--surface); border-color: var(--border); }
+    h1, h2, h3, label, th, td, .btn-plain { color: var(--text); }
+    .muted { color: var(--muted); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); }
+    .btn-primary:hover, .btn-primary:focus-visible { background: #2f61f0; }
+    .btn-secondary { background: var(--surface2); border-color: var(--border); }
+    .btn-danger { background: var(--danger); }
+    .input-field input, .filter-row input, .filter-row select { background: var(--surface2); border-color: var(--border); color: var(--text); }
+    .modal { background: var(--surface); border-color: var(--border); }
+    .modal-content {
+      max-height: min(80vh, 720px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-body {
+      overflow-y: auto;
+      padding-right: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    @media (min-width: 768px) {
+      .modal-form-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 767px) {
+      .modal-form-grid {
+        grid-template-columns: repeat(1, minmax(0,1fr));
+      }
+    }
+    table thead { background: var(--surface2); }
+    table td, table th { border-color: var(--border); }
+    .navbar { background: var(--surface); border-color: var(--border); }
+    .theme-toggler { color: var(--text); border-color: var(--border); }
+    .toast { background: rgba(15, 23, 42, 0.88); }
+
+    @media (prefers-color-scheme: dark) {
+      body:not(.light) { background: var(--bg); }
+    }
+  </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-6">
 
 <div class="max-w-7xl mx-auto">
 
   <!-- Header -->
-  <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Katipunang Kabataan Profiling</h1>
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-3">
+    <h1 class="text-3xl font-bold mb-0 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/></svg> Katipunang Kabataan Profiling</h1>
+    <button id="themeToggle" onclick="toggleTheme()" class="theme-toggler btn-plain border px-3 py-1.5 rounded-md hover:bg-sky-100 dark:hover:bg-slate-700">
+      <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 0111.21 3 7 7 0 0012 21a9 9 0 009-8.21z"/></svg> <span id="themeLabel">Switch Theme</span>
+    </button>
+  </div>
 
-  <!-- Search bar -->
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 space-y-2 md:space-y-0">
-    <input type="text" id="searchInput" placeholder="Search..." 
-           class="flex-1 p-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-    <div class="flex space-x-2 mt-2 md:mt-0">
-      <button onclick="searchData()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Search</button>
-      <button onclick="loadData()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Show All</button>
+  <!-- Table controls (search left, add right) -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+    <div class="flex items-center gap-2 w-full md:w-1/2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="Search by name..."
+             class="flex-1 p-3 text-gray-700 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+             aria-label="Search records" />
+    </div>
+    <div class="flex gap-2 items-center justify-end w-full md:w-auto">
+      <button onclick="loadData()" class="hidden bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"><svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.05 11a7 7 0 0113.9-2m0 0V4m0 5h-5"/><path d="M19.95 13a7 7 0 01-13.9 2m0 0v5m0-5h5"/></svg> Show All</button>
+      <button onclick="openModal('add')" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"><svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Add New Record</button>
     </div>
   </div>
 
-  <!-- Add / Update Form -->
-  <div class="bg-white p-6 rounded shadow mb-6">
-    <h2 class="text-xl font-semibold mb-4">Add / Update</h2>
-    <div id="formFields" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-    <div class="flex space-x-2 mt-4">
-      <button onclick="submitForm()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Save</button>
-      <button onclick="resetForm()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Cancel</button>
+  <!-- Modal -->
+  <div id="recordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white p-3 md:p-8 rounded-xl shadow-2xl w-full max-w-[90vw] md:max-w-4xl border border-gray-200 modal-content">
+      <div class="flex justify-between items-center mb-4 md:mb-6">
+        <h2 id="modalTitle" class="text-xl md:text-2xl font-bold text-gray-800">Add Record</h2>
+        <button onclick="closeModal()" class="text-gray-500 hover:text-gray-900 text-3xl font-bold">&times;</button>
+      </div>
+      <div id="formFieldsContainer" class="modal-body"></div>
+      
+      <div class="flex justify-between items-center mt-4 md:mt-6">
+        <button id="modalPrevBtn" onclick="prevOnboardingStep()" class="bg-gray-300 text-gray-700 px-4 md:px-5 py-2 md:py-2.5 rounded-lg hover:bg-gray-400" disabled>Previous</button>
+        <div class="flex gap-2">
+          <button id="modalNextBtn" onclick="nextOnboardingStep()" class="bg-blue-700 text-white px-4 md:px-5 py-2 md:py-2.5 rounded-lg hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-400">Next</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -37,6 +121,7 @@
   <div class="overflow-x-auto bg-white rounded shadow">
     <table id="dataTable" class="min-w-full divide-y divide-gray-200"></table>
   </div>
+  <div id="pagination" class="mt-3 flex justify-end items-center gap-2 text-sm"></div>
 
 </div>
 
@@ -44,6 +129,436 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbygWhzMHA9YqK9sNGh6NkxPt6KnZ9qR7F0SWWnQJSo_Ca2iDbda46oohQfBUb8an4sp/exec";
 let headers = [];
 let editingIndex = null;
+let editingRowData = null;
+let dataCache = [];
+let fullDataCache = [];
+let currentPage = 0;
+const pageSize = 8;
+let searchTimeout = null;
+const SEARCH_DEBOUNCE = 400;
+
+let onboardingStep = 0;
+let onboardingData = {};
+const onboardingSteps = [
+  {
+    title: 'PROFILE',
+    fields: [
+      { label: 'First Name', type: 'text', id: 'First Name', required: true },
+      { label: 'Middle Name', type: 'text', id: 'Middle Name' },
+      { label: 'Last Name', type: 'text', id: 'Last Name', required: true },
+      { label: 'District', type: 'text', id: 'District' },
+      { label: 'Gender', type: 'select', id: 'Gender', options: ['Male', 'Female', 'Other'] },
+      { label: 'Age', type: 'number', id: 'Age', min: 1 },
+      { label: 'Birthdate (mm/dd/yyyy)', type: 'date', id: 'Birthdate' },
+      { label: 'E-mail Address', type: 'email', id: 'E-mail Address' },
+      { label: 'Contact No.', type: 'tel', id: 'Contact No.' }
+    ]
+  },
+  {
+    title: 'DEMOGRAPHIC CHARACTERISTICS',
+    fields: [
+      { label: 'Civil Status', type: 'select', id: 'Civil Status', options: [
+        'SINGLE',
+        'MARRIED',
+        'WIDOWED',
+        'DIVORCED',
+        'SEPARATED',
+        'ANNULLED',
+        'UNKNOWN',
+        'LIVE-IN'
+      ] },
+      { label: 'Youth Classification', type: 'select', id: 'Youth Classification', options: ['IN SCHOOL YOUTH',
+'OUT OF SCHOOL YOUTH',
+'WORKING YOUTH',
+'PERSON WITH DISABILITY',
+        'CHILDREN IN CONFLICT WITH LAW',
+        'INDIGENOUS PEOPLE'
+      ] },
+      { label: 'Youth Age Group', type: 'select', id: 'Youth Age Group', options: [
+        '14 years old below',
+        'CHILD YOUTH (15-17 years old)',
+        'CORE YOUTH (18-24 years old)',
+        'YOUNG ADULT (25-30 years old)'
+      ] },
+      { label: 'Work Status', type: 'select', id: 'Work Status', options: ['EMPLOYED', 'UNEMPLOYED', 'SELF-EMPLOYED', 'CURRENTLY LOOKING FOR A JOB'] },
+      { label: 'Educational Background', type: 'select', id: 'Educational Background', options: ['ELEMENTARY LEVEL', 'ELEMENTARY GRADUATE', 'HIGH SCHOOL LEVEL', 'HIGH SCHOOL GRADUATE', 'VOCATIONAL GRADUATE',
+'COLLEGE LEVEL',
+'COLLEGE GRADUATE',
+'MASTERS LEVEL',
+'MASTERS GRADUATE',
+'DOCTORATE LEVEL'
+] },
+      { label: 'Registered SK Voter?', type: 'select', id: 'Registered SK Voter', options: ['Yes', 'No'] },
+      { label: 'Registered National Voter?', type: 'select', id: 'Registered National Voter', options: ['Yes', 'No'] },
+      { label: 'Did You Vote Last SK Election?', type: 'select', id: 'Did You Vote Last SK Election', options: ['Yes', 'No'] },
+      { label: 'Have You Already Attended A KK Assembly?', type: 'select', id: 'Have You Already Attended A KK Assembly', options: ['Yes', 'No'] }
+    ]
+  },
+  {
+    title: 'KKK ADDITIONAL INFORMATION',
+    fields: [
+      { label: 'YES, HOW MANY TIMES?', type: 'select', id: 'IF YES, HOW MANY TIMES?', options: ['1-2 TIMES', '3-4 TIMES', '5 AND ABOVE'] },
+      { label: 'Concern:', type: 'textarea', id: 'KKK Concern:' },
+      { label: 'Suggestion:', type: 'textarea', id: 'Suggestion' },      
+      { label: 'NO, WHY?', type: 'textarea', id: 'IF NO, WHY?' },
+      { label: 'Concern:', type: 'textarea', id: 'Concern:' },
+      { label: 'Suggestion:', type: 'textarea', id: 'Suggestion:' },      
+    ]
+  }
+];
+
+
+function getSvgIcon(name, classes = 'inline-block w-4 h-4') {
+  const icons = {
+    layout: `<svg xmlns="http://www.w3.org/2000/svg" class="${classes}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/></svg>`,
+    moon: `<svg xmlns="http://www.w3.org/2000/svg" class="${classes}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 0111.21 3 7 7 0 0012 21a9 9 0 009-8.21z"/></svg>`,
+    sun: `<svg xmlns="http://www.w3.org/2000/svg" class="${classes}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg>`,
+    search: `<svg xmlns="http://www.w3.org/2000/svg" class="${classes}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+    refresh: `<svg xmlns="http://www.w3.org/2000/svg" class="${classes}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.05 11a7 7 0 0113.9-2m0 0V4m0 5h-5"/><path d="M19.95 13a7 7 0 01-13.9 2m0 0v5m0-5h5"/></svg>`,
+    plus: `<svg xmlns="http://www.w3.org/2000/svg" class="${classes}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
+    edit: `<svg xmlns="http://www.w3.org/2000/svg" class="${classes}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`,
+    trash: `<svg xmlns="http://www.w3.org/2000/svg" class="${classes}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>`
+  };
+  return icons[name] || '';
+}
+
+function applyTheme(theme){
+  document.body.classList.remove('light','dark');
+  document.body.classList.add(theme);
+  localStorage.setItem('crudTheme', theme);
+  const themeIcon = theme === 'dark' ? 'sun' : 'moon';
+  document.getElementById('themeToggle').innerHTML = getSvgIcon(themeIcon, 'inline-block w-4 h-4') + ' ' + (theme === 'dark' ? 'Switch to Light' : 'Switch to Dark');
+}
+
+function toggleTheme(){
+  const current = document.body.classList.contains('dark') ? 'dark' : 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+(function(){
+  const saved = localStorage.getItem('crudTheme');
+  const prefer = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  applyTheme(prefer);
+})();
+
+function openModal(mode, rowData = null) {
+  const modal = document.getElementById('recordModal');
+  document.getElementById('modalTitle').innerText = mode === 'add' ? 'Add Record - PROFILE' : 'Update Record - PROFILE';
+  onboardingStep = 0;
+  if (mode === 'add') {
+    editingIndex = null;
+    editingRowData = null;
+    resetOnboardingForm();
+  } else {
+    editingRowData = rowData;
+  }
+  renderOnboardingForm();
+  modal.classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('recordModal').classList.add('hidden');
+}
+
+function getFieldValue(fieldId) {
+  const el = document.getElementById('field_' + fieldId);
+  return el ? el.value.trim() : '';
+}
+
+function setFieldValue(fieldId, value) {
+  const el = document.getElementById('field_' + fieldId);
+  if (el) el.value = value || '';
+}
+
+function normalizeKey(key) {
+  return String(key || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+const canonicalHeaderSynonyms = {
+  'first name': ['first name', 'firstname', 'given name', 'givenname'],
+  'middle name': ['middle name', 'middlename'],
+  'last name': ['last name', 'lastname', 'surname', 'family name'],
+  'district': ['district', 'area', 'location'],
+  'gender': ['gender', 'sex'],
+  'age': ['age'],
+  'birthdate': ['birthdate', 'birth date', 'date of birth', 'dob'],
+  'e-mail address': ['e-mail address', 'email address', 'e-mail', 'email'],
+  'contact no.': ['contact no.', 'contact no', 'phone', 'phone number', 'contact']
+};
+
+function findMatchingHeader(fieldKey, headerMap) {
+  const normalized = normalizeKey(fieldKey);
+  if (headerMap[normalized]) return headerMap[normalized];
+
+  for (const canonical in canonicalHeaderSynonyms) {
+    const aliases = canonicalHeaderSynonyms[canonical];
+    if (aliases.includes(normalized)) {
+      for (const alt of aliases) {
+        if (headerMap[alt]) return headerMap[alt];
+      }
+    }
+  }
+
+  // fallback: try matching by any alias in map
+  for (const canonical in canonicalHeaderSynonyms) {
+    const aliases = canonicalHeaderSynonyms[canonical];
+    for (const alt of aliases) {
+      if (headerMap[alt]) {
+        const altKey = normalizeKey(alt);
+        if (altKey === normalized) return headerMap[alt];
+      }
+    }
+  }
+
+  return null;
+}
+
+function getValueFromObject(key, sourceObj) {
+  if (!sourceObj) return '';
+  const normalizedKey = normalizeKey(key);
+  for (const k in sourceObj) {
+    if (normalizeKey(k) === normalizedKey) {
+      return String(sourceObj[k] || '').trim();
+    }
+  }
+  return '';
+}
+
+function getFieldValueById(fieldId) {
+  // onboardingData > editingRowData > current DOM value > headers data
+  let value = getValueFromObject(fieldId, onboardingData);
+  if (value) return value;
+
+  value = getValueFromObject(fieldId, editingRowData);
+  if (value) return value;
+
+  value = getFieldValue(fieldId);
+  if (value) return value;
+
+  const normalizedId = normalizeKey(fieldId);
+  const headerMap = {};
+  headers.forEach(h => {
+    headerMap[normalizeKey(h)] = h;
+  });
+
+  const matchingHeader = findMatchingHeader(normalizedId, headerMap);
+  if (matchingHeader) {
+    const element = document.getElementById('field_' + matchingHeader);
+    if (element && element.value) return element.value.trim();
+    value = getValueFromObject(matchingHeader, editingRowData);
+    if (value) return value;
+  }
+
+  // Fall back to editingRowData synonyms if headers don't match directly
+  if (editingRowData) {
+    const editingKeyMap = {};
+    Object.keys(editingRowData).forEach(k => {
+      editingKeyMap[normalizeKey(k)] = k;
+    });
+    const matchingEditKey = findMatchingHeader(normalizedId, editingKeyMap);
+    if (matchingEditKey) {
+      return String(editingRowData[matchingEditKey] || '').trim();
+    }
+
+    // Extra fallback: partial substring match for things like 'birthdate (mm/dd/yyyy)'
+    for (const k in editingKeyMap) {
+      if (k.includes(normalizedId) || normalizedId.includes(k)) {
+        return String(editingRowData[editingKeyMap[k]] || '').trim();
+      }
+    }
+  }
+
+  return '';
+}
+
+function validateCurrentStep() {
+  const step = onboardingSteps[onboardingStep];
+  for (const field of step.fields) {
+    if (field.required) {
+      const value = getFieldValue(field.id);
+      if (!value) {
+        showToast(`${field.label} is required.`, 'danger');
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function renderOnboardingForm() {
+  const container = document.getElementById('formFieldsContainer');
+  container.innerHTML = '';
+
+  const step = onboardingSteps[onboardingStep];
+  document.getElementById('modalTitle').innerText = `${editingIndex !== null ? 'Update' : 'Add'} Record - ${step.title}`;
+
+  const headerWrap = document.createElement('div');
+  headerWrap.className = 'mb-4 text-gray-700 flex flex-col gap-2';
+
+  const heading = document.createElement('h3');
+  heading.className = 'text-2xl text-gray-700 font-bold';
+  heading.textContent = step.title;
+  headerWrap.appendChild(heading);
+
+  const subtitle = document.createElement('div');
+  subtitle.className = 'text-sm text-slate-500';
+  subtitle.textContent = `Step ${onboardingStep + 1} of ${onboardingSteps.length}`;
+  headerWrap.appendChild(subtitle);
+
+  const hr = document.createElement('hr');
+  hr.className = 'border-gray-300';
+  headerWrap.appendChild(hr);
+
+  container.appendChild(headerWrap);
+
+  const fieldsWrapper = document.createElement('div');
+  fieldsWrapper.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4';
+
+  const assemblyValue = getFieldValueById('Have You Already Attended A KK Assembly') || getFieldValueById('Have You Already Attended A KK Assembly?');
+
+  function shouldShowField(field) {
+    const idNorm = normalizeKey(field.id);
+    if (['if no, why?', 'kkk concern:', 'suggestion:'].includes(idNorm)) {
+      return assemblyValue.toLowerCase() === 'no';
+    }
+    if (['if yes, how many times?', 'concern:', 'suggestion'].includes(idNorm)) {
+      return assemblyValue.toLowerCase() === 'yes';
+    }
+    return true;
+  }
+
+  step.fields.forEach(field => {
+    if (!shouldShowField(field)) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'flex flex-col mb-2';
+
+    const label = document.createElement('label');
+    label.className = 'text-gray-700 font-semibold mb-1';
+    label.innerText = field.label + (field.required ? ' *' : '');
+
+    let input;
+    if (field.type === 'select') {
+      input = document.createElement('select');
+      (field.options || []).forEach(option => {
+        const o = document.createElement('option');
+        o.value = option;
+        o.textContent = option;
+        input.appendChild(o);
+      });
+    } else if (field.type === 'textarea') {
+      input = document.createElement('textarea');
+      input.rows = 3;
+    } else {
+      input = document.createElement('input');
+      input.type = field.type || 'text';
+      if (field.min) input.min = field.min;
+      if (field.max) input.max = field.max;
+      if (field.placeholder) input.placeholder = field.placeholder;
+    }
+
+    input.id = 'field_' + field.id;
+    input.className = 'w-full p-3 border text-gray-700 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-slate-50';
+
+    const value = getFieldValueById(field.id);
+    if (value) input.value = value;
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(input);
+
+    const assemblyKeys = ['have you already attended a kk assembly', 'have you already attended a kk assembly?'];
+    if (assemblyKeys.includes(normalizeKey(field.id))) {
+      input.addEventListener('change', () => {
+        saveCurrentStepData();
+        renderOnboardingForm();
+      });
+    }
+
+    fieldsWrapper.appendChild(wrapper);
+  });
+
+  container.appendChild(fieldsWrapper);
+
+  document.getElementById('modalPrevBtn').disabled = onboardingStep === 0;
+  const nextBtn = document.getElementById('modalNextBtn');
+  nextBtn.innerText = onboardingStep === onboardingSteps.length - 1 ? 'Submit' : 'Next';
+
+  const inputElements = document.querySelectorAll('#formFieldsContainer input, #formFieldsContainer select, #formFieldsContainer textarea');
+  inputElements.forEach(i => {
+    i.style.minWidth = '240px';
+    i.style.maxWidth = '100%';
+  });
+}
+
+function saveCurrentStepData() {
+  const step = onboardingSteps[onboardingStep];
+  step.fields.forEach(field => {
+    const el = document.getElementById('field_' + field.id);
+    if (el) onboardingData[field.id] = el.value;
+  });
+}
+
+function buildRowObjFromOnboarding() {
+  const rowObj = {};
+  const headerMap = {};
+  headers.forEach(h => {
+    headerMap[normalizeKey(h)] = h;
+  });
+
+  // write page fields into row object by header match, else keep field id
+  onboardingSteps.forEach(step => {
+    step.fields.forEach(field => {
+      const fieldKey = normalizeKey(field.id);
+      let value = getFieldValueById(field.id);
+      if (value === '' && editingRowData) {
+        value = getValueFromObject(field.id, editingRowData);
+      }
+
+      const matchingHeader = findMatchingHeader(fieldKey, headerMap);
+      if (matchingHeader) {
+        rowObj[matchingHeader] = value;
+      } else {
+        rowObj[field.id] = value;
+      }
+    });
+  });
+
+  // ensure all existing headers are present
+  headers.forEach(h => {
+    if (!Object.prototype.hasOwnProperty.call(rowObj, h) || rowObj[h] === '') {
+      const value = getValueFromObject(h, onboardingData) || getValueFromObject(h, editingRowData) || getFieldValue(h);
+      if (value !== '') rowObj[h] = value;
+    }
+  });
+
+  return rowObj;
+}
+
+function nextOnboardingStep() {
+  if (!validateCurrentStep()) return;
+  saveCurrentStepData();
+  if (onboardingStep < onboardingSteps.length - 1) {
+    onboardingStep += 1;
+    renderOnboardingForm();
+    return;
+  }
+  submitForm();
+}
+
+function prevOnboardingStep() {
+  saveCurrentStepData();
+  if (onboardingStep <= 0) return;
+  onboardingStep -= 1;
+  renderOnboardingForm();
+}
+
+function resetOnboardingForm() {
+  onboardingData = {};
+  onboardingSteps.forEach(step => {
+    step.fields.forEach(field => {
+      setFieldValue(field.id, '');
+    });
+  });
+}
 
 // --- LOAD ALL ---
 function loadData() {
@@ -52,91 +567,358 @@ function loadData() {
   document.body.appendChild(script);
 }
 
-// --- HANDLE DATA ---
-function handleData(data) {
-  const table = document.getElementById("dataTable");
-  table.innerHTML = "";
-
-  if (!data || data.error) {
-    table.innerHTML = "<tr><td class='p-4'>No data or error</td></tr>";
+function searchData() {
+  const keyword = document.getElementById("searchInput").value.trim().toLowerCase();
+  if (!fullDataCache.length) {
+    // if no data loaded yet, fetch at least once
+    loadData();
     return;
   }
 
-  headers = data[0];
+  if (!keyword) {
+    dataCache = fullDataCache.slice();
+    currentPage = 0;
+    renderPaginatedTable();
+    return;
+  }
+
+  const filteredRows = fullDataCache.slice(1).filter(row => {
+    return row.some(cell => String(cell || "").toLowerCase().includes(keyword));
+  });
+
+  dataCache = [fullDataCache[0], ...filteredRows];
+  currentPage = 0;
+  renderPaginatedTable();
+}
+
+// --- HANDLE DATA ---
+function handleData(data) {
+  if (!data || data.error) {
+    document.getElementById("dataTable").innerHTML = "<tr><td class='p-4'>No data or error</td></tr>";
+    document.getElementById("pagination").innerHTML = "";
+    return;
+  }
+
+  fullDataCache = data;
+  dataCache = data.slice();
+  headers = dataCache[0] || [];
+  currentPage = 0;
+  renderPaginatedTable();
+}
+
+function renderPaginatedTable() {
+  const table = document.getElementById("dataTable");
+  table.innerHTML = "";
+
+  if (!dataCache.length || dataCache.length < 2) {
+    table.innerHTML = "<tr><td class='p-4 text-center text-gray-700'>No records found.</td></tr>";
+    document.getElementById("pagination").innerHTML = "";
+    return;
+  }
+
+  const totalRows = dataCache.length - 1;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  currentPage = Math.min(currentPage, totalPages - 1);
+
+  // Column filtering by request
+  const hiddenFields = new Set([
+    'date', 'gender', 'age', 'contact no', 'civil status',
+    'youth classification', 'youth age group', 'work status', 'educational background',
+    'e-mail address', 'registered sk voter', 'registered sk voter?',
+    'registered national voter', 'registered national voter?',
+    'did you vote last sk election', 'did you vote last sk election?',
+    'have you already attended a kk assembly', 'have you already attended a kk assembly?',
+    'if yes, how many times', 'if yes, how many times?',
+    'concern:', 'if no, why', 'if no, why?', 'KKK Concern:', 'suggestion:', 'suggestion'
+  ].map(s => s.toLowerCase()));
+
+  const firstNameIdx = headers.findIndex(h => /first\s*name/i.test(h));
+  const middleNameIdx = headers.findIndex(h => /middle\s*name/i.test(h));
+  const lastNameIdx = headers.findIndex(h => /last\s*name/i.test(h));
+
+  const displayColumns = [];
+  if (firstNameIdx >= 0 || middleNameIdx >= 0 || lastNameIdx >= 0) {
+    displayColumns.push({ type: 'fullname', label: 'Full Name', indexes: [firstNameIdx, middleNameIdx, lastNameIdx] });
+  }
+
+  headers.forEach((h, idx) => {
+    const lower = h.trim().toLowerCase();
+    if (idx === firstNameIdx || idx === middleNameIdx || idx === lastNameIdx) return;
+    if (hiddenFields.has(lower)) return;
+    displayColumns.push({ type: 'field', label: h, index: idx });
+  });
+
   let html = "<thead class='bg-gray-50'><tr>";
-  headers.forEach(h => html += `<th class="px-4 py-2 text-left text-sm font-medium text-gray-700">${h}</th>`);
+  displayColumns.forEach(col => {
+    let label = col.label;
+    if (/birth\s*date/i.test(label)) {
+      label = label.replace(/\s*\(mm\/dd\/yyyy\)\)?/i, '').trim();
+    }
+    html += `<th class="px-4 py-2 text-left text-sm font-medium text-gray-700">${label}</th>`;
+  });
   html += "<th class='px-4 py-2 text-left text-sm font-medium text-gray-700'>Actions</th></tr></thead><tbody class='divide-y divide-gray-200'>";
 
-  for (let i = 1; i < data.length; i++) {
+  const start = 1 + currentPage * pageSize;
+  const end = Math.min(dataCache.length, start + pageSize);
+
+  function formatBirthDate(value) {
+    if (!value) return '';
+    const raw = String(value).trim();
+    const d = new Date(raw);
+    if (isNaN(d.valueOf())) {
+      const parts = raw.split(/[\/-]/).map(s => s.trim());
+      if (parts.length === 3) {
+        let [y, m, day] = parts;
+        if (/^\d{4}$/.test(y)) {
+          return `${String(m).padStart(2, '0')}/${String(day).padStart(2, '0')}/${y}`;
+        }
+        if (/^\d{4}$/.test(day)) {
+          return `${String(m).padStart(2, '0')}/${String(y).padStart(2, '0')}/${day}`;
+        }
+      }
+      return raw;
+    }
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    const yy = d.getFullYear();
+    return `${mm}/${dd}/${yy}`;
+  }
+
+  for (let i = start; i < end; i++) {
+    const row = dataCache[i];
+    const globalIndex = i - 1;
     html += "<tr>";
-    data[i].forEach((cell,j) => {
-      html += `<td data-label="${headers[j]}" class="px-4 py-2 text-sm text-gray-600">${cell}</td>`;
+    displayColumns.forEach(col => {
+      if (col.type === 'fullname') {
+        const nameParts = [];
+        col.indexes.forEach(idx => {
+          if (idx >= 0 && row[idx] != null && String(row[idx]).trim() !== '') {
+            nameParts.push(String(row[idx]).trim());
+          }
+        });
+        html += `<td data-label="${col.label}" class="px-4 py-2 text-sm text-gray-600">${nameParts.join(' ')}</td>`;
+      } else {
+        let cell = row[col.index];
+        const lowerLabel = col.label.toLowerCase();
+        if (lowerLabel.includes('birth')) {
+          cell = formatBirthDate(cell);
+        }
+        html += `<td data-label="${col.label}" class="px-4 py-2 text-sm text-gray-600">${cell || ''}</td>`;
+      }
     });
-    html += `<td class="px-4 py-2 text-sm space-x-1">
-               <button onclick="editRow(${i-1})" class="bg-yellow-400 text-white px-2 py-1 rounded hover:bg-yellow-500">Edit</button>
-               <button onclick="deleteRow(${i-1})" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Delete</button>
-             </td></tr>`;
+    html += `<td class=\"px-4 py-2 text-sm space-x-1\">`;
+    html += `<button onclick="editRow(${globalIndex})" class="bg-yellow-400 text-white px-2 py-1 rounded hover:bg-yellow-500" title="Edit"><svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>`;
+    html += `<button onclick="deleteRow(${globalIndex})" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>`;
+    html += `</td></tr>`;
   }
 
   html += "</tbody>";
   table.innerHTML = html;
 
-  renderFormFields();
+  const startItem = 1 + currentPage * pageSize;
+  const endItem = Math.min(dataCache.length - 1, currentPage * pageSize + pageSize);
+  renderPagination(totalPages, startItem, endItem, totalRows);
 }
+
+function renderPagination(totalPages, rangeStart, rangeEnd, totalRows) {
+  const container = document.getElementById("pagination");
+  if (totalPages <= 1) {
+    container.innerHTML = "";
+    return;
+  }
+
+  let html = `
+    <div class="w-full flex flex-wrap items-center justify-between gap-2 py-2 px-1 text-sm text-gray-600">
+      <span>Showing <strong class="text-gray-700">${rangeStart}</strong>–<strong class="text-gray-700">${rangeEnd}</strong> of <strong class="text-gray-700">${totalRows}</strong></span>
+      <div class="flex items-center gap-1">`;
+
+  html += `<button ${currentPage === 0 ? 'disabled' : ''} onclick="gotoPage(${currentPage - 1})" class="px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-indigo-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">Prev</button>`;
+
+  function addPageButton(page, label, active = false, disabled = false) {
+    const style = active ? 'bg-indigo-600 text-white border border-indigo-600' : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-100';
+    return `<button ${disabled ? 'disabled' : ''} onclick="gotoPage(${page})" class="px-3 py-1.5 rounded-md text-sm font-medium ${style} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}">${label}</button>`;
+  }
+
+  html += addPageButton(0, '1', currentPage === 0, currentPage === 0);
+
+  if (currentPage > 2) {
+    html += `<span class="px-2 text-gray-400">…</span>`;
+  }
+
+  const startZone = Math.max(1, currentPage - 1);
+  const endZone = Math.min(totalPages - 2, currentPage + 1);
+
+  for (let i = startZone; i <= endZone; i++) {
+    html += addPageButton(i, i + 1, i === currentPage);
+  }
+
+  if (currentPage < totalPages - 3) {
+    html += `<span class="px-2 text-gray-400">…</span>`;
+  }
+
+  if (totalPages > 1) {
+    html += addPageButton(totalPages - 1, totalPages, currentPage === totalPages - 1, currentPage === totalPages - 1);
+  }
+
+  html += addPageButton(currentPage + 1, 'Next', false, currentPage === totalPages - 1);
+
+  html += `</div></div>`;
+  container.innerHTML = html;
+}
+
+function gotoPage(page) {
+  const totalRows = dataCache.length - 1;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  currentPage = Math.max(0, Math.min(totalPages - 1, page));
+  renderPaginatedTable();
+}
+
 
 // --- RENDER FORM FIELDS ---
 function renderFormFields() {
   const container = document.getElementById("formFields");
   container.innerHTML = "";
+
+  const civStatusOptions = ["Single", "Married", "Widowed", "Separated", "Divorced"];
+  const genderOptions = ["Male", "Female", "Other"];
+
   headers.forEach(h => {
+    const lower = h.trim().toLowerCase();
+
+    // Hide Email Address from the visible layout; keep internal value mapping
+    if (lower === 'email address') {
+      // ensure field exists as hidden to pass through submit
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.id = "field_" + h;
+      hidden.value = '';
+      container.appendChild(hidden);
+      return;
+    }
+
     const wrapper = document.createElement("div");
     wrapper.className = "flex flex-col";
     const label = document.createElement("label");
+
+    // Convert displayed label to E-mail Address for email field and keep mapping.
+    if (lower === 'e-mail address') {
+      label.innerText = 'E-mail Address';
+      label.className = "text-gray-700 font-semibold mb-1";
+      wrapper.appendChild(label);
+      const field = document.createElement('input');
+      field.type = 'email';
+      field.id = "field_E-mail Address";
+      field.className = "w-full p-3 text-gray-700 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-slate-50";
+      wrapper.appendChild(field);
+      container.appendChild(wrapper);
+      return;
+    }
+
     label.innerText = h;
-    label.className = "text-gray-700 font-medium mb-1";
-    const input = document.createElement("input");
-    input.id = "field_" + h;
-    input.placeholder = h;
-    input.className = "p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500";
+    label.className = "text-gray-700 font-semibold mb-1";
+
+    let field;
+    if (lower.includes('gender')) {
+      field = document.createElement('select');
+      genderOptions.forEach(v => {
+        const o = document.createElement('option');
+        o.value = v;
+        o.textContent = v;
+        field.appendChild(o);
+      });
+    } else if (lower.includes('civil status')) {
+      field = document.createElement('select');
+      civStatusOptions.forEach(v => {
+        const o = document.createElement('option');
+        o.value = v;
+        o.textContent = v;
+        field.appendChild(o);
+      });
+    } else if (lower.includes('birth') || lower.includes('date')) {
+      field = document.createElement('input');
+      field.type = 'date';
+    } else {
+      field = document.createElement('input');
+      field.type = 'text';
+      field.placeholder = "Enter " + h;
+    }
+
+    field.id = "field_" + h;
+    field.className = "w-full p-3 border text-gray-700 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-slate-50";
+
     wrapper.appendChild(label);
-    wrapper.appendChild(input);
+    wrapper.appendChild(field);
     container.appendChild(wrapper);
   });
+
+  document.querySelectorAll('#formFields input, #formFields select').forEach(i => i.style.minWidth = '240px');
 }
 
 // --- SUBMIT FORM ---
 function submitForm() {
-  const rowObj = {};
-  headers.forEach(h => {
-    rowObj[h] = document.getElementById("field_" + h).value;
-  });
+  saveCurrentStepData();
+  const rowObj = buildRowObjFromOnboarding();
 
   if (editingIndex === null) {
-    postAction("add", rowObj, () => { resetForm(); loadData(); });
+    postAction('add', rowObj, () => { resetForm(); resetOnboardingForm(); closeModal(); loadData(); showToast('Record added successfully'); });
   } else {
     rowObj.rowIndex = editingIndex;
-    postAction("update", rowObj, () => { resetForm(); loadData(); });
+    postAction('update', rowObj, () => { resetForm(); resetOnboardingForm(); closeModal(); loadData(); showToast('Record updated successfully'); });
   }
 }
 
 // --- RESET FORM ---
 function resetForm() {
   editingIndex = null;
-  headers.forEach(h => document.getElementById("field_" + h).value = "");
+  editingRowData = null;
+  headers.forEach(h => {
+    const field = document.getElementById('field_' + h);
+    if (field) field.value = '';
+  });
+  onboardingSteps.forEach(step => {
+    step.fields.forEach(field => {
+      setFieldValue(field.id, '');
+    });
+  });
+}
+
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.className = `toast rounded-lg px-4 py-2 text-sm font-medium ${type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.transition = 'opacity 0.3s ease';
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 2200);
 }
 
 // --- EDIT ROW ---
 function editRow(index) {
   editingIndex = index;
-  const script = document.createElement("script");
-  script.src = `${API_URL}?action=list&callback=function(data){populateForm(data[${index+1}])}`;
-  document.body.appendChild(script);
+  const row = dataCache[index + 1];
+  if (!row) return;
+
+  const rowData = {};
+  headers.forEach((h, i) => {
+    rowData[h] = row[i] || '';
+  });
+
+  editingRowData = rowData;
+  openModal('update', rowData);
 }
 
 function populateForm(row) {
-  headers.forEach((h,i) => {
-    document.getElementById("field_" + h).value = row[i];
+  // kept for compatibility but not used now
+  if (!row) return;
+  headers.forEach((h, i) => {
+    const field = document.getElementById("field_" + h);
+    if (field) field.value = row[i] || "";
   });
+  openModal('update');
 }
 
 // --- DELETE ROW ---
@@ -147,23 +929,47 @@ function deleteRow(index) {
 
 // --- POST ACTION ---
 function postAction(action, body, callback) {
-  const script = document.createElement("script");
-  const params = encodeURIComponent(JSON.stringify(body));
-  script.src = `${API_URL}?action=${action}&callback=${callback.name}&body=${params}`;
-  document.body.appendChild(script);
+  fetch(`${API_URL}?action=${action}`, {
+    method: "POST",
+    mode: "no-cors",  // We can’t read response, but Google Sheets will still update
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  })
+  .then(() => {
+    // We can’t read the JSON response due to CORS, so just reload table
+    callback();
+  })
+  .catch(err => console.error(err));
 }
 
-// --- INSTANT SEARCH ---
-document.getElementById("searchInput").addEventListener("input", function() {
-  const keyword = this.value;
-  const script = document.createElement("script");
-  script.src = `${API_URL}?action=search&keyword=${encodeURIComponent(keyword)}&callback=handleData`;
-  document.body.appendChild(script);
+function scheduleSearch() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    searchData();
+  }, SEARCH_DEBOUNCE);
+}
+
+function onSearchKey(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    clearTimeout(searchTimeout);
+    searchData();
+  }
+}
+
+// --- SEARCH CONTROL ---
+const searchInput = document.getElementById("searchInput");
+searchInput.addEventListener("input", scheduleSearch);
+searchInput.addEventListener("keydown", onSearchKey);
+searchInput.addEventListener("click", (e) => {
+  e.stopPropagation();
 });
 
 // --- INITIAL LOAD ---
 loadData();
 </script>
+
+<div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
 </body>
 </html>
