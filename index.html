@@ -190,8 +190,8 @@
 
   <!-- Table controls (search left, add right) -->
   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-    <div class="flex items-center gap-2 w-full md:w-1/2">
-      <div class="relative w-full">
+    <div class="flex flex-wrap items-center gap-2 w-full md:w-1/2">
+      <div class="relative w-full md:w-2/3">
         <span class="absolute inset-y-0 left-3 flex items-center text-slate-500 pointer-events-none">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </span>
@@ -201,8 +201,13 @@
       </div>
     </div>
     <div class="flex gap-2 items-center justify-end w-full md:w-auto">
-      <button onclick="loadData()" class="hidden bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"><svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.05 11a7 7 0 0113.9-2m0 0V4m0 5h-5"/><path d="M19.95 13a7 7 0 01-13.9 2m0 0v5m0-5h5"/></svg> Show All</button>
-      <button onclick="openModal('add')" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"><svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Add New Record</button>
+        
+      <div class="w-full md:w-1/2">
+        <select id="districtFilter" class="w-full p-3 text-gray-700 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">All Districts</option>
+        </select>
+      </div>
+      <button onclick="openModal('add')" class="bg-green-500 text-white px-4 py-3 rounded hover:bg-green-600"><svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Add</button>
     </div>
   </div>
 
@@ -471,6 +476,33 @@ function findMatchingHeader(fieldKey, headerMap) {
   }
 
   return null;
+}
+
+function getDistrictColumnIndex() {
+  return headers.findIndex(h => /district/i.test(h));
+}
+
+function populateDistrictFilter() {
+  const select = document.getElementById('districtFilter');
+  if (!select) return;
+  const index = getDistrictColumnIndex();
+  const districts = new Set();
+  if (index >= 0 && fullDataCache.length > 1) {
+    fullDataCache.slice(1).forEach(row => {
+      const value = String(row[index] || '').trim();
+      if (value) districts.add(value);
+    });
+  }
+
+  const sorted = Array.from(districts).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+  select.innerHTML = '<option value="">All Districts</option>';
+  sorted.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = d;
+    select.appendChild(opt);
+  });
 }
 
 function getValueFromObject(key, sourceObj) {
@@ -802,21 +834,41 @@ function loadData() {
 
 function searchData() {
   const keyword = document.getElementById("searchInput").value.trim().toLowerCase();
+  const district = document.getElementById("districtFilter") ? document.getElementById("districtFilter").value.trim().toLowerCase() : '';
+
   if (!fullDataCache.length) {
     // if no data loaded yet, fetch at least once
     loadData();
     return;
   }
 
-  if (!keyword) {
+  if (!keyword && !district) {
     dataCache = fullDataCache.slice();
     currentPage = 0;
     renderPaginatedTable();
     return;
   }
 
+  const districtIdx = getDistrictColumnIndex();
+  const firstNameIdx = headers.findIndex(h => /first\s*name/i.test(h));
+  const middleNameIdx = headers.findIndex(h => /middle\s*name/i.test(h));
+  const lastNameIdx = headers.findIndex(h => /last\s*name/i.test(h));
+  const emailIdx = headers.findIndex(h => /e-?mail/i.test(h));
+
   const filteredRows = fullDataCache.slice(1).filter(row => {
-    return row.some(cell => String(cell || "").toLowerCase().includes(keyword));
+    let matchesKeyword = true;
+    if (keyword) {
+      const candidates = [];
+      if (firstNameIdx >= 0) candidates.push(String(row[firstNameIdx] || ''));
+      if (middleNameIdx >= 0) candidates.push(String(row[middleNameIdx] || ''));
+      if (lastNameIdx >= 0) candidates.push(String(row[lastNameIdx] || ''));
+      if (emailIdx >= 0) candidates.push(String(row[emailIdx] || ''));
+      const searchText = candidates.join(' ').toLowerCase();
+      matchesKeyword = searchText.includes(keyword);
+    }
+
+    const matchesDistrict = !district || (districtIdx >= 0 && String(row[districtIdx] || '').trim().toLowerCase() === district);
+    return matchesKeyword && matchesDistrict;
   });
 
   dataCache = [fullDataCache[0], ...filteredRows];
@@ -836,6 +888,7 @@ function handleData(data) {
   dataCache = data.slice();
   headers = dataCache[0] || [];
   currentPage = 0;
+  populateDistrictFilter();
   renderPaginatedTable();
 }
 
@@ -1346,6 +1399,11 @@ searchInput.addEventListener("keydown", onSearchKey);
 searchInput.addEventListener("click", (e) => {
   e.stopPropagation();
 });
+
+const districtFilter = document.getElementById('districtFilter');
+if (districtFilter) {
+  districtFilter.addEventListener('change', searchData);
+}
 
 // --- INITIAL LOAD ---
 loadData();
