@@ -1,0 +1,110 @@
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CRUD App</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    input, button { padding: 8px; margin: 5px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px;}
+    td, th { border: 1px solid #ccc; padding: 8px; }
+    th { background: #f4f4f4; }
+  </style>
+</head>
+<body>
+
+<h2>CRUD App (Google Sheets)</h2>
+
+<!-- SEARCH -->
+<input type="text" id="searchName" placeholder="Search name">
+<button onclick="search()">Search</button>
+<button onclick="loadData()">Refresh</button>
+
+<!-- FORM -->
+<h3>Add / Update</h3>
+<input type="text" id="name" placeholder="Name">
+<input type="number" id="age" placeholder="Age">
+<input type="text" id="address" placeholder="Address">
+<br>
+<button onclick="add()">Add</button>
+<button onclick="update()">Update</button>
+
+<!-- TABLE -->
+<table id="table">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Age</th>
+      <th>Address</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbyB1OIavEsw_yNngTR6H2a_0f4U5u9sr3GBdh3DO60tiz84AJS7QBIzogexa7y2ZUjP/exec";
+
+async function loadData() {
+  const res = await fetch(`${API_URL}?action=list`);
+  const data = await res.json();
+  render(data);
+}
+
+async function search() {
+  const name = document.getElementById("searchName").value;
+  const res = await fetch(`${API_URL}?action=search&name=${name}`);
+  const data = await res.json();
+  render(data);
+}
+
+async function add() {
+  const payload = getFormData("add");
+  const res = await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+  alert(await res.text());
+  loadData();
+}
+
+async function update() {
+  const payload = getFormData("update");
+  const res = await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+  alert(await res.text());
+  loadData();
+}
+
+function getFormData(action) {
+  return {
+    action,
+    name: document.getElementById("name").value,
+    age: document.getElementById("age").value,
+    address: document.getElementById("address").value
+  };
+}
+
+function render(data) {
+  const tbody = document.querySelector("#table tbody");
+  tbody.innerHTML = "";
+
+  data.forEach(row => {
+    const tr = `<tr>
+      <td>${row[0]}</td>
+      <td>${row[1]}</td>
+      <td>${row[2]}</td>
+    </tr>`;
+    tbody.innerHTML += tr;
+  });
+}
+
+// load on start
+loadData();
+</script>
+
+</body>
+</html>
