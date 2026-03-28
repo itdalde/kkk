@@ -252,10 +252,11 @@
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbygWhzMHA9YqK9sNGh6NkxPt6KnZ9qR7F0SWWnQJSo_Ca2iDbda46oohQfBUb8an4sp/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbz4JaPLLGFXrJVr9TBgTHrsl1ib881oQQeOz4N9U0-Yp3OYw7AA8A_rjddNQL9JecpI/exec";
 let headers = [];
 let editingIndex = null;
 let editingRowData = null;
+let editingRecordId = null;
 let dataCache = [];
 let fullDataCache = [];
 let currentPage = 0;
@@ -431,12 +432,20 @@ function closeModal() {
 }
 
 function getFieldValue(fieldId) {
-  const el = document.getElementById('field_' + fieldId);
+  let el = document.getElementById('field_' + fieldId);
+  if (!el) {
+    // Fallback: try using querySelector with attribute selector for IDs with special characters
+    el = document.querySelector(`[id="field_${fieldId}"]`);
+  }
   return el ? el.value.trim() : '';
 }
 
 function setFieldValue(fieldId, value) {
-  const el = document.getElementById('field_' + fieldId);
+  let el = document.getElementById('field_' + fieldId);
+  if (!el) {
+    // Fallback: try using querySelector with attribute selector for IDs with special characters
+    el = document.querySelector(`[id="field_${fieldId}"]`);
+  }
   if (el) el.value = value || '';
 }
 
@@ -582,7 +591,10 @@ function getFieldValueById(fieldId) {
 
   const matchingHeader = findMatchingHeader(normalizedId, headerMap);
   if (matchingHeader) {
-    const element = document.getElementById('field_' + matchingHeader);
+    let element = document.getElementById('field_' + matchingHeader);
+    if (!element) {
+      element = document.querySelector(`[id="field_${matchingHeader}"]`);
+    }
     if (element && element.value) return element.value.trim();
     value = getValueFromObject(matchingHeader, editingRowData);
     if (value) return value;
@@ -762,9 +774,24 @@ function renderOnboardingForm() {
 function saveCurrentStepData() {
   const step = onboardingSteps[onboardingStep];
   step.fields.forEach(field => {
-    const el = document.getElementById('field_' + field.id);
-    if (el) onboardingData[field.id] = el.value;
+    let el = document.getElementById('field_' + field.id);
+    if (!el) {
+      // Fallback: try using querySelector for IDs with special characters
+      el = document.querySelector(`[id="field_${field.id}"]`);
+    }
+    if (el) onboardingData[field.id] = el.value.trim();
   });
+}
+
+function convertDateToMMDDYYYY(value) {
+  if (!value) return '';
+  const isoRe = /^(\d{4})-(\d{2})-(\d{2})$/;
+  const match = isoRe.exec(String(value).trim());
+  if (match) {
+    const [, y, m, d] = match;
+    return `${m}/${d}/${y}`;
+  }
+  return value;
 }
 
 function buildRowObjFromOnboarding() {
@@ -783,6 +810,16 @@ function buildRowObjFromOnboarding() {
         value = getValueFromObject(field.id, editingRowData);
       }
 
+      // Convert birthdate from YYYY-MM-DD to mm/dd/yyyy format for Google Sheets
+      if ((field.id === 'Birthdate' || /birthdate/i.test(field.id)) && value) {
+        value = convertDateToMMDDYYYY(value);
+      }
+
+      // Ensure email field is properly captured (fallback if not found by ID)
+      if ((field.id === 'E-mail Address' || /e-?mail/i.test(field.id)) && !value && editingRowData) {
+        value = getValueFromObject('E-mail Address', editingRowData) || getValueFromObject('email', editingRowData) || getValueFromObject('email address', editingRowData);
+      }
+
       const matchingHeader = findMatchingHeader(fieldKey, headerMap);
       if (matchingHeader) {
         rowObj[matchingHeader] = value;
@@ -799,6 +836,27 @@ function buildRowObjFromOnboarding() {
       if (value !== '') rowObj[h] = value;
     }
   });
+
+  // Sync email values across legacy field names (e-mail address / email address / email)
+  const emailVariations = ['E-mail Address', 'email address', 'email', 'e-mail', 'e-mail address'];
+  let emailValue = '';
+  for (const h of headers) {
+    const lower = normalizeKey(h);
+    if (emailVariations.some(e => normalizeKey(e) === lower)) {
+      if (rowObj[h]) {
+        emailValue = rowObj[h];
+        break;
+      }
+    }
+  }
+  if (emailValue) {
+    for (const h of headers) {
+      const lower = normalizeKey(h);
+      if (emailVariations.some(e => normalizeKey(e) === lower)) {
+        rowObj[h] = emailValue;
+      }
+    }
+  }
 
   return rowObj;
 }
@@ -933,7 +991,7 @@ function renderPaginatedTable() {
 
   // Column filtering by request
   const hiddenFields = new Set([
-    'date', 'gender', 'age', 'contact no', 'civil status',
+    'date','id', 'gender', 'age', 'contact no', 'civil status',
     'youth classification', 'youth age group', 'work status', 'educational background',
     'e-mail address', 'registered sk voter', 'registered sk voter?',
     'registered national voter', 'registered national voter?',
@@ -1259,18 +1317,20 @@ function submitForm() {
   saveCurrentStepData();
   const rowObj = buildRowObjFromOnboarding();
 
-  // set date field to today (mm/dd/yyyy)
-  const now = new Date();
-  const yy = now.getFullYear();
-  const mm = String(now.getMonth()+1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const dateValue = `${mm}/${dd}/${yy}`;
+  // Only set date field to today for NEW records (mm/dd/yyyy)
+  if (editingIndex === null) {
+    const now = new Date();
+    const yy = now.getFullYear();
+    const mm = String(now.getMonth()+1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const dateValue = `${mm}/${dd}/${yy}`;
 
-  const dateHeader = headers.find(h => normalizeKey(h) === 'date' || normalizeKey(h) === 'date of entry' || normalizeKey(h) === 'date created');
-  if (dateHeader) {
-    rowObj[dateHeader] = dateValue;
+    const dateHeader = headers.find(h => normalizeKey(h) === 'date' || normalizeKey(h) === 'date of entry' || normalizeKey(h) === 'date created');
+    if (dateHeader) {
+      rowObj[dateHeader] = dateValue;
+    }
+    rowObj['DATE'] = dateValue;
   }
-  rowObj['DATE'] = dateValue;
 
   if (editingIndex === null) {
     const dateIndex = headers.findIndex(h => normalizeKey(h) === 'date');
@@ -1296,7 +1356,11 @@ function submitForm() {
       loadData();
     });
   } else {
-    rowObj.rowIndex = editingIndex;
+    // Use row index for updates to stay compatible with legacy Apps Script handlers.
+    // Also send extra keys so different backend variants can still resolve the row.
+    rowObj.rowIndex = editingIndex;        // 0-based data index
+    rowObj.rowNumber = editingIndex + 2;   // 1-based sheet row including header
+    rowObj.sheetRow = editingIndex + 2;    // alias for older scripts
     postAction('update', rowObj, () => { resetForm(); resetOnboardingForm(); closeModal(); loadData(); showToast('Record updated successfully'); });
   }
 }
@@ -1305,6 +1369,7 @@ function submitForm() {
 function resetForm() {
   editingIndex = null;
   editingRowData = null;
+  editingRecordId = null;
   headers.forEach(h => {
     const field = document.getElementById('field_' + h);
     if (field) field.value = '';
@@ -1340,6 +1405,16 @@ function editRow(index) {
   headers.forEach((h, i) => {
     rowData[h] = row[i] || '';
   });
+
+  // Try to get ID from first column (assumes ID column exists)
+  // Common ID column names: 'ID', 'Id', 'id'
+  const idHeaderIdx = headers.findIndex(h => /^id$/i.test(h.trim()));
+  if (idHeaderIdx >= 0 && row[idHeaderIdx]) {
+    editingRecordId = String(row[idHeaderIdx]).trim();
+  } else {
+    // Fallback: use row index (rowIndex in Google Sheets is index + 2)
+    editingRecordId = null;
+  }
 
   editingRowData = rowData;
   openModal('update', rowData);
