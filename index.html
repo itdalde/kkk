@@ -1,26 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>CRUD App</title>
+  <title>Katipunang Kabataan Profiling App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial; margin: 20px; }
+    body { font-family: Arial; margin: 10px; }
+    input, button { padding: 6px; margin: 2px; font-size: 1em; }
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    input, button { padding: 5px; margin: 2px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    tr:nth-child(even) { background-color: #f9f9f9; }
+    @media (max-width: 600px) {
+      table, thead, tbody, th, td, tr { display: block; }
+      th { background: #eee; }
+      td { border: none; padding-left: 50%; position: relative; }
+      td:before { position: absolute; left: 6px; top: 6px; content: attr(data-label); font-weight: bold; }
+    }
   </style>
 </head>
 <body>
 
-<h2>SK Camagong KKK Profiling</h2>
+<h2>Katipunang Kabataan Profiling</h2>
 
 <input type="text" id="searchInput" placeholder="Search..." />
 <button onclick="searchData()">Search</button>
 <button onclick="loadData()">Show All</button>
 
+<h3>Add / Update</h3>
+<div id="formDiv">
+  <div id="formFields"></div>
+  <button onclick="submitForm()">Save</button>
+  <button onclick="resetForm()">Cancel</button>
+</div>
+
 <table id="dataTable"></table>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzFmf_zh5KaSGNeP0k7XE02dVd8AoZnaBq_PGBp-rGoU6axY7LGUIQh_apxd9578u4w/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbygWhzMHA9YqK9sNGh6NkxPt6KnZ9qR7F0SWWnQJSo_Ca2iDbda46oohQfBUb8an4sp/exec";
+let headers = [];
+let editingIndex = null; // track row being edited
 
 // --- LOAD ALL ---
 function loadData() {
@@ -29,29 +46,103 @@ function loadData() {
   document.body.appendChild(script);
 }
 
+// --- HANDLE DATA ---
 function handleData(data) {
   const table = document.getElementById("dataTable");
   table.innerHTML = "";
+
   if (!data || data.error) {
-    table.innerHTML = "<tr><td colspan='5'>No data or error</td></tr>";
+    table.innerHTML = "<tr><td colspan='5'>No data / error</td></tr>";
     return;
   }
 
-  const headers = data[0];
-  let html = "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>";
-  for(let i=1; i<data.length; i++){
-    html += "<tr>" + data[i].map(c => `<td>${c}</td>`).join("") + "</tr>";
+  headers = data[0];
+  let html = "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "<th>Actions</th></tr>";
+
+  for (let i = 1; i < data.length; i++) {
+    html += "<tr>";
+    for (let j = 0; j < data[i].length; j++) {
+      html += `<td data-label="${headers[j]}">${data[i][j]}</td>`;
+    }
+    html += `<td>
+      <button onclick="editRow(${i-1})">Edit</button>
+      <button onclick="deleteRow(${i-1})">Delete</button>
+    </td></tr>`;
   }
+
   table.innerHTML = html;
+  renderFormFields();
 }
 
-// --- SEARCH ---
-function searchData() {
-  const name = document.getElementById("searchInput").value;
+// --- RENDER FORM FIELDS ---
+function renderFormFields() {
+  const container = document.getElementById("formFields");
+  container.innerHTML = "";
+  headers.forEach(h => {
+    const input = document.createElement("input");
+    input.id = "field_" + h;
+    input.placeholder = h;
+    container.appendChild(input);
+    container.appendChild(document.createElement("br"));
+  });
+}
+
+// --- SUBMIT FORM ---
+function submitForm() {
+  const rowObj = {};
+  headers.forEach(h => {
+    rowObj[h] = document.getElementById("field_" + h).value;
+  });
+
+  if (editingIndex === null) {
+    postAction("add", rowObj, () => { resetForm(); loadData(); });
+  } else {
+    rowObj.rowIndex = editingIndex;
+    postAction("update", rowObj, () => { resetForm(); loadData(); });
+  }
+}
+
+// --- RESET FORM ---
+function resetForm() {
+  editingIndex = null;
+  headers.forEach(h => document.getElementById("field_" + h).value = "");
+}
+
+// --- EDIT ROW ---
+function editRow(index) {
+  editingIndex = index;
   const script = document.createElement("script");
-  script.src = `${API_URL}?action=search&name=${encodeURIComponent(name)}&callback=handleData`;
+  script.src = `${API_URL}?action=list&callback=function(data){populateForm(data[${index+1}])}`;
   document.body.appendChild(script);
 }
+
+function populateForm(row) {
+  headers.forEach((h,i) => {
+    document.getElementById("field_" + h).value = row[i];
+  });
+}
+
+// --- DELETE ROW ---
+function deleteRow(index) {
+  if (!confirm("Are you sure to delete this row?")) return;
+  postAction("delete", {rowIndex: index}, loadData);
+}
+
+// --- POST ACTION ---
+function postAction(action, body, callback) {
+  const script = document.createElement("script");
+  const params = encodeURIComponent(JSON.stringify(body));
+  script.src = `${API_URL}?action=${action}&callback=${callback.name}&body=${params}`;
+  document.body.appendChild(script);
+}
+
+// --- INSTANT SEARCH ---
+document.getElementById("searchInput").addEventListener("input", function() {
+  const keyword = this.value;
+  const script = document.createElement("script");
+  script.src = `${API_URL}?action=search&keyword=${encodeURIComponent(keyword)}&callback=handleData`;
+  document.body.appendChild(script);
+});
 
 // --- INITIAL LOAD ---
 loadData();
