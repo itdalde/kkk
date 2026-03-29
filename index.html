@@ -261,6 +261,7 @@ let dataCache = [];
 let fullDataCache = [];
 let dataRowIndexMap = []; // map filtered index -> fullDataCache index
 let currentPage = 0;
+let pendingYouthAgeGroup = '';
 const pageSize = 8;
 let searchTimeout = null;
 const SEARCH_DEBOUNCE = 400;
@@ -320,10 +321,10 @@ const onboardingSteps = [
 'MASTERS GRADUATE',
 'DOCTORATE LEVEL'
 ] },
-      { label: 'Registered SK Voter?', type: 'select', id: 'Registered SK Voter?', options: ['Yes', 'No'] },
-      { label: 'Registered National Voter?', type: 'select', id: 'Registered National Voter?', options: ['Yes', 'No'] },
-      { label: 'Did You Vote Last SK Election?', type: 'select', id: 'DID YOU VOTE LAST SK ELECTION?', options: ['Yes', 'No'] },
-      { label: 'Have You Already Attended A KK Assembly?', type: 'select', id: 'HAVE YOU ALREADY ATTENDED A KK ASSEMBLY?', options: ['Yes', 'No'] }
+      { label: 'Registered SK Voter?', type: 'select', id: 'Registered SK Voter?', options: [null,'Yes', 'No'], required: true },
+      { label: 'Registered National Voter?', type: 'select', id: 'Registered National Voter?', options: [null,'Yes', 'No'] , required: true},
+      { label: 'Did You Vote Last SK Election?', type: 'select', id: 'DID YOU VOTE LAST SK ELECTION?', options: [null,'Yes', 'No'], required: true },
+      { label: 'Have You Already Attended A KK Assembly?', type: 'select', id: 'HAVE YOU ALREADY ATTENDED A KK ASSEMBLY?', options: [null,'Yes', 'No'], required: true }
     ]
   },
   {
@@ -432,20 +433,24 @@ function closeModal() {
   document.getElementById('recordModal').classList.add('hidden');
 }
 
+function toDOMId(fieldId) {
+  return 'field_' + String(fieldId || '').trim().replace(/[^a-zA-Z0-9-_]/g, '_');
+}
+
 function getFieldValue(fieldId) {
-  let el = document.getElementById('field_' + fieldId);
+  const id = toDOMId(fieldId);
+  let el = document.getElementById(id);
   if (!el) {
-    // Fallback: try using querySelector with attribute selector for IDs with special characters
-    el = document.querySelector(`[id="field_${fieldId}"]`);
+    el = document.querySelector(`[id="${id}"]`);
   }
   return el ? el.value.trim() : '';
 }
 
 function setFieldValue(fieldId, value) {
-  let el = document.getElementById('field_' + fieldId);
+  const id = toDOMId(fieldId);
+  let el = document.getElementById(id);
   if (!el) {
-    // Fallback: try using querySelector with attribute selector for IDs with special characters
-    el = document.querySelector(`[id="field_${fieldId}"]`);
+    el = document.querySelector(`[id="${id}"]`);
   }
   if (el) el.value = value || '';
 }
@@ -459,6 +464,28 @@ function toSentenceCase(str) {
   return str
     .toLowerCase()
     .replace(/\b\w+/g, word => word.charAt(0).toUpperCase() + word.slice(1));
+}
+
+function selectYouthAgeGroup(age) {
+  const select = document.getElementById(toDOMId('Youth Age Group')); 
+  const normalizedAge = Number(age);
+  let selected = '';
+
+  if (!isNaN(normalizedAge) && normalizedAge > 0) {
+    if (normalizedAge <= 14) selected = '14 years old below';
+    else if (normalizedAge >= 15 && normalizedAge <= 17) selected = 'CHILD YOUTH (15-17 years old)';
+    else if (normalizedAge >= 18 && normalizedAge <= 24) selected = 'CORE YOUTH (18-24 years old)';
+    else if (normalizedAge >= 25 && normalizedAge <= 30) selected = 'YOUNG ADULT (25-30 years old)';
+  }
+
+  // Only set if the option exists; otherwise leave current value.
+  if (select && selected) {
+    const option = Array.from(select.options).find(o => o.value.toString().trim().toUpperCase() === selected.toString().trim().toUpperCase());
+    if (option) select.value = option.value;
+  }
+
+  // Store unresolved selection for later when field appears.
+  pendingYouthAgeGroup = selected || pendingYouthAgeGroup;
 }
 
 const canonicalHeaderSynonyms = {
@@ -605,9 +632,10 @@ function getFieldValueById(fieldId) {
 
   const matchingHeader = findMatchingHeader(normalizedId, headerMap);
   if (matchingHeader) {
-    let element = document.getElementById('field_' + matchingHeader);
+    const elementId = toDOMId(matchingHeader);
+    let element = document.getElementById(elementId);
     if (!element) {
-      element = document.querySelector(`[id="field_${matchingHeader}"]`);
+      element = document.querySelector(`[id="${elementId}"]`);
     }
     if (element && element.value) return element.value.trim();
     value = getValueFromObject(matchingHeader, editingRowData);
@@ -721,7 +749,7 @@ function renderOnboardingForm() {
       if (field.placeholder) input.placeholder = field.placeholder;
     }
 
-    input.id = 'field_' + field.id;
+    input.id = toDOMId(field.id);
     input.className = 'w-full p-3 border text-gray-700 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-slate-50';
 
     let value = getFieldValueById(field.id);
@@ -731,8 +759,7 @@ function renderOnboardingForm() {
         value = normalizedDate;
       }
     }
-    if (value) {
-        console.log(`Setting initial value for ${field.id}:`, value);
+    if (value) { 
       if (field.type === 'text' && !/\b(id|e-?mail|contact|phone|gender|age|date|number)\b/.test(field.id.toLowerCase())) {
         input.value = toSentenceCase(value);
       } else {
@@ -751,12 +778,13 @@ function renderOnboardingForm() {
       input.addEventListener('change', () => {
         const dateValue = normalizeDateInputValue(input.value);
         if (!dateValue) return;
-        const ageInput = document.getElementById('field_Age');
+        const ageInput = document.getElementById(toDOMId('Age'));
         if (!ageInput) return;
 
         const dob = new Date(dateValue);
         if (isNaN(dob.valueOf())) {
           ageInput.value = '';
+          selectYouthAgeGroup('');
           return;
         }
 
@@ -767,6 +795,14 @@ function renderOnboardingForm() {
           age -= 1;
         }
         ageInput.value = age >= 0 ? age : '';
+        selectYouthAgeGroup(age);
+      });
+    }
+
+    if (field.id === 'Age' || /\bage\b/i.test(field.id)) {
+      input.addEventListener('input', () => {
+        const ageValue = Number(input.value);
+        selectYouthAgeGroup(ageValue);
       });
     }
 
@@ -797,15 +833,31 @@ function renderOnboardingForm() {
     i.style.minWidth = '240px';
     i.style.maxWidth = '100%';
   });
+
+  // Set youth age group automatically for existing age when modal is rendered.
+  const ageInput = document.getElementById(toDOMId('Age'));
+  if (ageInput && ageInput.value) {
+    selectYouthAgeGroup(ageInput.value);
+  }
+
+  // Apply pending youth age group if step contains that field.
+  const youthGroupEl = document.getElementById(toDOMId('Youth Age Group'));
+  if (youthGroupEl && pendingYouthAgeGroup) {
+    const option = Array.from(youthGroupEl.options).find(o => o.value.toString().trim().toUpperCase() === pendingYouthAgeGroup.toString().trim().toUpperCase());
+    if (option) {
+      youthGroupEl.value = option.value;
+    }
+    pendingYouthAgeGroup = '';
+  }
 }
 
 function saveCurrentStepData() {
   const step = onboardingSteps[onboardingStep];
   step.fields.forEach(field => {
-    let el = document.getElementById('field_' + field.id);
+    const fieldId = toDOMId(field.id);
+    let el = document.getElementById(fieldId);
     if (!el) {
-      // Fallback: try using querySelector for IDs with special characters
-      el = document.querySelector(`[id="field_${field.id}"]`);
+      el = document.querySelector(`[id="${fieldId}"]`);
     }
     if (el) onboardingData[field.id] = el.value.trim();
   });
@@ -1289,7 +1341,7 @@ function renderFormFields() {
       // ensure field exists as hidden to pass through submit
       const hidden = document.createElement('input');
       hidden.type = 'hidden';
-      hidden.id = "field_" + h;
+      hidden.id = toDOMId(h);
       hidden.value = '';
       container.appendChild(hidden);
       return;
@@ -1306,7 +1358,7 @@ function renderFormFields() {
       wrapper.appendChild(label);
       const field = document.createElement('input');
       field.type = 'email';
-      field.id = "field_E-mail Address";
+      field.id = toDOMId('E-mail Address');
       field.className = "w-full p-3 text-gray-700 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-slate-50";
       wrapper.appendChild(field);
       container.appendChild(wrapper);
@@ -1342,7 +1394,7 @@ function renderFormFields() {
       field.placeholder = "Enter " + h;
     }
 
-    field.id = "field_" + h;
+    field.id = toDOMId(h);
     field.className = "w-full p-3 border text-gray-700 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-slate-50";
 
     wrapper.appendChild(label);
@@ -1412,8 +1464,7 @@ function resetForm() {
   editingRowData = null;
   editingRecordId = null;
   headers.forEach(h => {
-    const field = document.getElementById('field_' + h);
-    if (field) field.value = '';
+    setFieldValue(h, '');
   });
   onboardingSteps.forEach(step => {
     step.fields.forEach(field => {
@@ -1464,8 +1515,7 @@ function populateForm(row) {
   // kept for compatibility but not used now
   if (!row) return;
   headers.forEach((h, i) => {
-    const field = document.getElementById("field_" + h);
-    if (field) field.value = row[i] || "";
+    setFieldValue(h, row[i] || '');
   });
   openModal('update');
 }
