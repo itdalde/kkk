@@ -615,6 +615,30 @@ function getValueFromObject(key, sourceObj) {
   return '';
 }
 
+function normalizeContactNumber(value) {
+  if (!value) return '';
+  let clean = String(value).trim().replace(/[^0-9\+]/g, '');
+
+  // Normalize common Philippine mobile formats:
+  // 09123456789 => +639123456789
+  // +639123456789 => +639123456789
+  // 639123456789 => +639123456789
+  // 9123456789 => +639123456789
+  if (/^0?9\d{9}$/.test(clean)) {
+    clean = clean.replace(/^0/, '');
+    clean = '+63' + clean;
+  } else if (/^63?9\d{9}$/.test(clean)) {
+    if (!clean.startsWith('+')) clean = '+' + clean;
+  } else if (/^\+639\d{9}$/.test(clean)) {
+    // already normalized
+  } else {
+    // leave as-is if it doesn't match, to support other country formats possibly
+    clean = String(value).trim();
+  }
+
+  return clean;
+}
+
 function normalizeDateInputValue(value) {
   if (!value) return '';
   const raw = String(value).trim();
@@ -727,10 +751,10 @@ function validateCurrentStep() {
     }
 
     if (/contact\s*no\.?/i.test(field.id) && value) {
-      // Philippine mobile phone numbers: +63 9xx xxx xxxx or 09xx xxx xxxx
-      const phRe = /^(\+63|0)9\d{9}$/;
-      const normalized = value.replace(/[^0-9+]/g, '');
-      if (!phRe.test(normalized)) {
+      const normalizedContact = normalizeContactNumber(value);
+      const contactDigits = normalizedContact.replace(/[^0-9+]/g, '');
+      const phRe = /^\+639\d{9}$/;
+      if (!phRe.test(contactDigits)) {
         showToast('Please enter a valid Philippine mobile number (example: 09171234567 or +639171234567).', 'danger');
         return false;
       }
@@ -758,16 +782,26 @@ function renderOnboardingForm() {
   const fieldsWrapper = document.createElement('div');
   fieldsWrapper.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4';
 
-  const assemblyValue = getFieldValueById('Have You Already Attended A KK Assembly') || getFieldValueById('Have You Already Attended A KK Assembly?');
-
+  const assemblyValue = (getFieldValueById('Have You Already Attended A KK Assembly') || getFieldValueById('Have You Already Attended A KK Assembly?') || '').toLowerCase().trim();
+ 
   function shouldShowField(field) {
     const idNorm = normalizeKey(field.id);
-    if (['if no, why?', 'kk concern:', 'suggestion:'].includes(idNorm)) {
-      return assemblyValue.toLowerCase() === 'no';
+    const rawId = String(field.id || '').trim().toLowerCase();
+
+    const showYes = assemblyValue === 'yes';
+    const showNo = assemblyValue === 'no';
+
+    // Yes-case fields: only show if user selected "Yes"
+    if (idNorm === 'if yes how many times' || idNorm === 'kk concern' || rawId === 'suggestion') {
+      return showYes;
     }
-    if (['if yes, how many times?', 'concern:', 'suggestion'].includes(idNorm)) {
-      return assemblyValue.toLowerCase() === 'yes';
+
+    // No-case fields: only show if user selected "No"
+    if (idNorm === 'if no why' || idNorm === 'concern' || rawId === 'suggestion:') {
+      return showNo;
     }
+
+    // Other fields are always visible.
     return true;
   }
 
@@ -952,6 +986,11 @@ function buildRowObjFromOnboarding() {
       }
 
       const matchingHeader = findMatchingHeader(fieldKey, headerMap);
+
+      if (/contact\s*no\.?/i.test(field.id) && value) {
+        value = normalizeContactNumber(value);
+      }
+
       if (matchingHeader) {
         rowObj[matchingHeader] = value;
       } else {
@@ -963,8 +1002,13 @@ function buildRowObjFromOnboarding() {
   // ensure all existing headers are present
   headers.forEach(h => {
     if (!Object.prototype.hasOwnProperty.call(rowObj, h) || rowObj[h] === '') {
-      const value = getValueFromObject(h, onboardingData) || getValueFromObject(h, editingRowData) || getFieldValue(h);
-      if (value !== '') rowObj[h] = value;
+      let value = getValueFromObject(h, onboardingData) || getValueFromObject(h, editingRowData) || getFieldValue(h);
+      if (value !== '') {
+        if (/contact\s*no\.?/i.test(h)) {
+          value = normalizeContactNumber(value);
+        }
+        rowObj[h] = value;
+      }
     }
   });
 
