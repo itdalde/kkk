@@ -279,7 +279,7 @@ const onboardingSteps = [
       { label: 'First Name', type: 'text', id: 'First Name', required: true },
       { label: 'Middle Name', type: 'text', id: 'Middle Name' },
       { label: 'Last Name', type: 'text', id: 'Last Name', required: true },
-      { label: 'District', type: 'text', id: 'District' },
+      { label: 'District', type: 'select', id: 'District', required: true, options: [1,2,3,4,5,6,7,8,9,10] },
       { label: 'Gender', type: 'select', id: 'Gender', options: ['Male', 'Female', 'Other'] },
       { label: 'Birthdate (mm/dd/yyyy)', type: 'date', id: 'BIRTHDATE (mm/dd/yyyy)' },
       { label: 'Age', type: 'number', id: 'Age', min: 1 },
@@ -300,14 +300,14 @@ const onboardingSteps = [
         'UNKNOWN',
         'LIVE-IN'
       ] },
-      { label: 'Youth Classification', type: 'select', id: 'Youth Classification', options: ['IN SCHOOL YOUTH',
+      { label: 'Youth Classification', type: 'select', id: 'Youth Classification', required: true, options: ['IN SCHOOL YOUTH',
 'OUT OF SCHOOL YOUTH',
 'WORKING YOUTH',
 'PERSON WITH DISABILITY',
         'CHILDREN IN CONFLICT WITH LAW',
         'INDIGENOUS PEOPLE'
       ] },
-      { label: 'Youth Age Group', type: 'select', id: 'Youth Age Group', options: [
+      { label: 'Youth Age Group', type: 'select', id: 'Youth Age Group', required: true, options: [
         '14 years old below',
         'CHILD YOUTH (15-17 years old)',
         'CORE YOUTH (18-24 years old)',
@@ -669,7 +669,7 @@ function validateCurrentStep() {
   for (const field of step.fields) {
     if (field.required) {
       const value = getFieldValue(field.id);
-      if (!value) {
+      if (!value || value.trim() === 'null') {
         showToast(`${field.label} is required.`, 'danger');
         return false;
       }
