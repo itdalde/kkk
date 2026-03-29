@@ -726,17 +726,7 @@ function renderOnboardingForm() {
 
   const headerWrap = document.createElement('div');
   headerWrap.className = 'mb-4 text-gray-700 flex flex-col gap-2';
-
-  const heading = document.createElement('h3');
-  heading.className = 'text-2xl text-gray-700 font-bold';
-  heading.textContent = step.title;
-  headerWrap.appendChild(heading);
-
-  const subtitle = document.createElement('div');
-  subtitle.className = 'text-sm text-slate-500';
-  subtitle.textContent = `Step ${onboardingStep + 1} of ${onboardingSteps.length}`;
-  headerWrap.appendChild(subtitle);
-
+ 
   const hr = document.createElement('hr');
   hr.className = 'border-gray-300';
   headerWrap.appendChild(hr);
